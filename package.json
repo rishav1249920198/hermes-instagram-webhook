@@ -1,0 +1,11 @@
+{
+  "name": "instagram-hermes-webhook",
+  "version": "1.0.0",
+  "description": "Meta Instagram Business API Webhook Bridge for Hermes & AI Auto-Reply",
+  "main": "api/webhook.js",
+  "scripts": {
+    "start": "node api/webhook.js"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
