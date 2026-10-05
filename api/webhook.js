@@ -13,6 +13,16 @@ export default async function handler(req, res) {
   const INSTAGRAM_ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN || "";
   const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 
+  // 0. HEALTH & ENVIRONMENT STATUS CHECK
+  if (req.method === "GET" && req.query.status === "health") {
+    return res.status(200).json({
+      status: "online",
+      token_configured: Boolean(INSTAGRAM_ACCESS_TOKEN),
+      token_preview: INSTAGRAM_ACCESS_TOKEN ? `${INSTAGRAM_ACCESS_TOKEN.substring(0, 6)}...` : "missing",
+      timestamp: new Date().toISOString()
+    });
+  }
+
   // 1. META WEBHOOK VERIFICATION (GET Handshake)
   if (req.method === "GET") {
     const mode = req.query["hub.mode"];
