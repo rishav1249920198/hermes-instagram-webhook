@@ -3,6 +3,15 @@
  * Handles Meta Webhook Verification (GET) and Incoming Instagram DMs (POST).
  */
 
+// Global in-memory log buffer for live debugging
+global.recentLogs = global.recentLogs || [];
+function logEvent(type, data) {
+  try {
+    global.recentLogs.unshift({ timestamp: new Date().toISOString(), type, data });
+    if (global.recentLogs.length > 30) global.recentLogs.pop();
+  } catch (e) {}
+}
+
 export default async function handler(req, res) {
   // Configured Verify Tokens (Accepts both rishav_hermes_2026 and rishav_hermes_insta_2026)
   const validTokens = [
@@ -13,13 +22,20 @@ export default async function handler(req, res) {
   const INSTAGRAM_ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN || "";
   const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 
-  // 0. HEALTH & ENVIRONMENT STATUS CHECK
+  // 0. HEALTH & LIVE LOGS ENDPOINT
   if (req.method === "GET" && req.query.status === "health") {
     return res.status(200).json({
       status: "online",
       token_configured: Boolean(INSTAGRAM_ACCESS_TOKEN),
       token_preview: INSTAGRAM_ACCESS_TOKEN ? `${INSTAGRAM_ACCESS_TOKEN.substring(0, 6)}...` : "missing",
       timestamp: new Date().toISOString()
+    });
+  }
+
+  if (req.method === "GET" && req.query.status === "logs") {
+    return res.status(200).json({
+      total: (global.recentLogs || []).length,
+      logs: global.recentLogs || []
     });
   }
 
@@ -44,6 +60,7 @@ export default async function handler(req, res) {
   // 2. INCOMING INSTAGRAM MESSAGES & EVENTS (POST)
   if (req.method === "POST") {
     const body = req.body;
+    logEvent("INCOMING_POST", body);
 
     console.log("[Instagram Webhook] Incoming POST Event:", JSON.stringify(body, null, 2));
 
@@ -158,7 +175,9 @@ async function handleAiReply(senderId, userText, accessToken, openRouterKey) {
 
     const graphData = await graphRes.json();
     console.log("[Instagram Reply Dispatched] Result:", graphData);
+    logEvent("DISPATCH_RESULT", { status: graphRes.status, data: graphData, senderId, replyText });
   } catch (error) {
     console.error("[Instagram Dispatch Error]:", error);
+    logEvent("DISPATCH_ERROR", { message: error.message, stack: error.stack });
   }
 }
