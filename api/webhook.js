@@ -4,8 +4,12 @@
  */
 
 export default async function handler(req, res) {
-  // Configured Verify Token (Set in Vercel Environment Variables or defaults to this value)
-  const EXPECTED_VERIFY_TOKEN = process.env.VERIFY_TOKEN || "rishav_hermes_insta_2026";
+  // Configured Verify Tokens (Accepts both rishav_hermes_2026 and rishav_hermes_insta_2026)
+  const validTokens = [
+    process.env.VERIFY_TOKEN,
+    "rishav_hermes_2026",
+    "rishav_hermes_insta_2026"
+  ].filter(Boolean);
   const INSTAGRAM_ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN || "";
   const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 
@@ -17,12 +21,12 @@ export default async function handler(req, res) {
 
     console.log("[Instagram Webhook] Incoming GET Verification Request:", { mode, token, challenge });
 
-    if (mode === "subscribe" && token === EXPECTED_VERIFY_TOKEN) {
+    if (mode === "subscribe" && validTokens.includes(token)) {
       console.log("[Instagram Webhook] Verification SUCCESS! Responding with challenge:", challenge);
       // Meta requires HTTP 200 with the exact challenge value in the response body
       return res.status(200).send(challenge);
     } else {
-      console.warn("[Instagram Webhook] Verification FAILED. Token mismatch:", { received: token, expected: EXPECTED_VERIFY_TOKEN });
+      console.warn("[Instagram Webhook] Verification FAILED. Token mismatch:", { received: token, expected: validTokens });
       return res.status(403).json({ error: "Verification token mismatch" });
     }
   }
