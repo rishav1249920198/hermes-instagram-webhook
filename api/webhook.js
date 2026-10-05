@@ -83,7 +83,7 @@ async function handleAiReply(senderId, userText, accessToken, openRouterKey) {
   try {
     let replyText = "Namaste! Main Aman Sharma hoon (Senior Digital Consultant working with Rishav Kumar). Aapke message ke liye dhanyawad! Main aapki kya sahayata kar sakta hoon?";
 
-    // If an AI API Key is provided, generate an intelligent contextual response
+    // Support OpenRouter or Gemini if provided
     if (openRouterKey) {
       try {
         const aiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -91,7 +91,7 @@ async function handleAiReply(senderId, userText, accessToken, openRouterKey) {
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${openRouterKey}`,
-            "HTTP-Referer": "https://instagram-webhook-bridge.vercel.app",
+            "HTTP-Referer": "https://hermes-instagram-webhook.vercel.app",
             "X-Title": "Hermes Instagram Assistant"
           },
           body: JSON.stringify({
@@ -99,14 +99,14 @@ async function handleAiReply(senderId, userText, accessToken, openRouterKey) {
             messages: [
               {
                 role: "system",
-                content: "You are Aman Sharma, Senior Digital Consultant working with Rishav Kumar. You respond politely, helpfully, and concisely in natural Hindi/Hinglish to business owners and clients on Instagram. Offer web development, digital growth, and agency solutions. Never say you are an AI or bot."
+                content: "You are Aman Sharma, Senior Digital Consultant working with Rishav Kumar. You respond politely, helpfully, and concisely in natural Hindi/Hinglish to business owners and clients on Instagram. Offer web development, digital growth, and agency solutions. Keep replies under 2-3 sentences. Never say you are an AI or bot."
               },
               {
                 role: "user",
                 content: userText
               }
             ],
-            max_tokens: 300,
+            max_tokens: 250,
             temperature: 0.7
           })
         });
@@ -118,10 +118,25 @@ async function handleAiReply(senderId, userText, accessToken, openRouterKey) {
       } catch (aiErr) {
         console.warn("[Instagram AI] LLM error, falling back to default reply:", aiErr.message);
       }
+    } else {
+      // Smart contextual fallback based on user message keywords
+      const lower = userText.toLowerCase();
+      if (lower.includes("price") || lower.includes("rate") || lower.includes("cost") || lower.includes("kitna")) {
+        replyText = "Namaste! Hamare packages basic website ke liye ₹2,999 se start hote hain aur full stack dynamic business web portal ₹8,499 se shuru hota hai. Aapki requirement ke hisaab se best quote share kar dunga. Aapka kis cheez ka business hai?";
+      } else if (lower.includes("demo") || lower.includes("portfolio") || lower.includes("work") || lower.includes("sample")) {
+        replyText = "Namaste! Hamare live live projects aur portfolio dekhne ke liye aap hamare WhatsApp (+91-XXXXX) ya yahan DM par apna requirement share kar sakte hain, main turant live demo links bhej deta hoon.";
+      } else if (lower.includes("hi") || lower.includes("hello") || lower.includes("hey") || lower.includes("namaste")) {
+        replyText = "Namaste! Main Aman Sharma hoon (working with Rishav Kumar). Aapke message ke liye shukriya! Bataiye aapke business ya website requirement ke baare me kaise madad kar sakta hoon?";
+      }
     }
 
-    // Send reply back to Instagram user via Meta Graph API v21.0
-    const graphApiUrl = `https://graph.facebook.com/v21.0/me/messages?access_token=${encodeURIComponent(accessToken)}`;
+    // Auto-detect Instagram Graph endpoint vs Facebook Graph endpoint based on token type
+    // Instagram Login tokens (IGAA...) use graph.instagram.com, Facebook Page tokens use graph.facebook.com
+    const graphEndpoint = accessToken.startsWith("EA")
+      ? "https://graph.facebook.com/v21.0/me/messages"
+      : "https://graph.instagram.com/v21.0/me/messages";
+
+    const graphApiUrl = `${graphEndpoint}?access_token=${encodeURIComponent(accessToken)}`;
     const graphRes = await fetch(graphApiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
